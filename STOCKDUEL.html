@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>STOCKDUEL – Predict Tech Stock Prices</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Barlow+Condensed:wght@400;500;600;700;800;900&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #ede8df;
+    --surface: #e4ddd2;
+    --surface2: #d9d1c4;
+    --border: #c8bfb0;
+    --border2: #b5a990;
+    --text: #1a1a1a;
+    --muted: #6b6055;
+    --dim: #a89880;
+    --green: #1a7a4a;
+    --green-bright: #00c96b;
+    --green-dim: rgba(26,122,74,0.12);
+    --green-glow: rgba(0,201,107,0.25);
+    --red: #c0392b;
+    --red-bright: #ff3c5a;
+    --red-dim: rgba(192,57,43,0.12);
+    --red-glow: rgba(255,60,90,0.25);
+    --amber: #b8860b;
+    --accent: #1a1a1a;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:15px;
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+  body::before{
+    content:'';
+    position:fixed;inset:0;
+    background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.012) 2px,rgba(0,0,0,0.012) 4px);
+    pointer-events:none;z-index:9999;
+  }
+
+  /* ── NAV ── */
+  nav{
+    position:sticky;top:0;z-index:100;
+    background:rgba(237,232,223,0.96);
+    backdrop-filter:blur(16px);
+    border-bottom:1px solid var(--border);
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 32px;height:60px;
+  }
+  .nav-logo{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:17px;font-weight:700;
+    color:var(--text);text-decoration:none;
+    display:flex;align-items:center;gap:8px;letter-spacing:.04em;
+  }
+  .nav-logo .dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--green-bright);
+    box-shadow:0 0 10px var(--green-bright);
+    animation:blink 1.4s infinite;
+  }
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+  .nav-links{display:flex;gap:4px;align-items:center}
+  .nav-links a{
+    color:var(--muted);text-decoration:none;
+    padding:6px 14px;border-radius:6px;
+    font-size:13px;font-weight:500;
+    transition:all .2s;letter-spacing:.02em;
+  }
+  .nav-links a:hover,.nav-links a.active{color:var(--text);background:var(--surface2)}
+  .btn-connect{
+    background:#1a1a1a;color:#ede8df;
+    border:none;padding:8px 20px;border-radius:8px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;font-weight:600;cursor:pointer;
+    letter-spacing:.05em;transition:all .2s;
+    box-shadow:0 0 16px rgba(26,26,26,0.2);
+  }
+  .btn-connect:hover{background:#2c6dff;box-shadow:0 0 24px rgba(44,109,255,0.4);transform:translateY(-1px)}
+
+  /* ── HERO ── */
+  .hero{
+    text-align:center;padding:72px 24px 52px;
+    position:relative;overflow:hidden;
+  }
+  .hero::before{
+    content:'';position:absolute;top:-80px;left:50%;transform:translateX(-50%);
+    width:800px;height:500px;
+    background:radial-gradient(ellipse at center,rgba(26,122,74,0.07) 0%,transparent 65%);
+    pointer-events:none;
+  }
+  .hero-badge{
+    display:inline-flex;align-items:center;gap:8px;
+    background:var(--surface2);border:1px solid var(--border2);
+    padding:6px 16px;border-radius:20px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;color:var(--muted);letter-spacing:.08em;
+    margin-bottom:24px;
+  }
+  .hero-badge .live-dot{
+    width:6px;height:6px;border-radius:50%;
+    background:var(--green-bright);box-shadow:0 0 6px var(--green-bright);
+    animation:blink 1.4s infinite;
+  }
+  .hero h1{
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:clamp(52px,8vw,96px);
+    font-weight:900;line-height:1;
+    letter-spacing:-.01em;
+    margin-bottom:12px;
+    text-transform:uppercase;
+  }
+  .hero h1 em{
+    font-style:normal;
+    background:linear-gradient(135deg,#1a7a4a,#00c96b);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    background-clip:text;
+  }
+  .hero-sub{
+    color:var(--muted);font-size:15px;max-width:460px;margin:0 auto;line-height:1.65;
+  }
+
+  /* ── TICKER ── */
+  .ticker-wrap{
+    overflow:hidden;border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+    background:var(--surface);padding:10px 0;
+  }
+  .ticker{display:flex;gap:0;animation:scroll 30s linear infinite;width:max-content}
+  @keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+  .tick-item{
+    display:flex;align-items:center;gap:8px;padding:0 28px;
+    border-right:1px solid var(--border);white-space:nowrap;
+    font-family:'IBM Plex Mono',monospace;font-size:12px;
+  }
+  .tick-sym{font-weight:700;color:var(--text)}
+  .tick-price{color:var(--muted)}
+  .tick-chg.up{color:var(--green)}
+  .tick-chg.dn{color:var(--red)}
+
+  /* ── LAYOUT ── */
+  .section{padding:40px 32px;max-width:1280px;margin:0 auto}
+
+  .section-header{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:28px;
+  }
+  .section-title{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;font-weight:600;
+    color:var(--muted);letter-spacing:.12em;text-transform:uppercase;
+    display:flex;align-items:center;gap:10px;
+  }
+  .section-title::before{content:'';width:3px;height:14px;background:var(--green-bright);border-radius:2px}
+  .market-count{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;
+    color:var(--dim);letter-spacing:.06em;
+  }
+
+  /* ── STATS BAR ── */
+  .stats-bar{
+    display:grid;grid-template-columns:repeat(4,1fr);
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:14px;overflow:hidden;margin-bottom:40px;
+  }
+  .stat-item{
+    padding:20px 24px;border-right:1px solid var(--border);text-align:center;
+    transition:background .2s;
+  }
+  .stat-item:last-child{border-right:none}
+  .stat-item:hover{background:var(--surface2)}
+  .stat-val{
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:28px;font-weight:800;letter-spacing:.01em;
+    color:var(--text);margin-bottom:2px;
+  }
+  .stat-val.green{color:var(--green)}
+  .stat-label{color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-family:'IBM Plex Mono',monospace}
+
+  /* ══════════════════════════════════════════
+     MARKET CARD GRID — THE MAIN EVENT
+  ══════════════════════════════════════════ */
+  .market-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:16px;
+    margin-bottom:60px;
+  }
+  @media(max-width:1100px){.market-grid{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:780px){.market-grid{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:500px){.market-grid{grid-template-columns:1fr}}
+
+  /* shimmer skeletons */
+  .card-skeleton{
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:16px;padding:24px;
+    animation:shimmerPulse 1.4s ease-in-out infinite alternate;
+  }
+  @keyframes shimmerPulse{from{opacity:.7}to{opacity:1}}
+  .skel-line{background:var(--surface2);border-radius:4px;margin-bottom:10px}
+
+  /* ── MARKET CARD ── */
+  .market-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:22px 20px 18px;
+    cursor:pointer;
+    position:relative;
+    overflow:hidden;
+    transition:transform .22s ease, border-color .22s ease, box-shadow .22s ease;
+    display:flex;flex-direction:column;gap:0;
+  }
+  .market-card::before{
+    content:'';
+    position:absolute;inset:0;
+    background:linear-gradient(135deg,rgba(255,255,255,0.04) 0%,transparent 60%);
+    pointer-events:none;border-radius:16px;
+  }
+  .market-card:hover{
+    transform:translateY(-4px);
+    border-color:var(--border2);
+    box-shadow:0 12px 40px rgba(0,0,0,0.12),0 2px 8px rgba(0,0,0,0.06);
+  }
+  .market-card.pulse-active{
+    animation:cardPulse 2.4s ease-in-out infinite;
+  }
+  @keyframes cardPulse{
+    0%,100%{box-shadow:0 0 0 0 rgba(0,201,107,0)}
+    50%{box-shadow:0 0 0 6px rgba(0,201,107,0.08)}
+  }
+
+  /* Card top row */
+  .card-top{
+    display:flex;align-items:flex-start;justify-content:space-between;
+    margin-bottom:14px;
+  }
+  .card-sym-wrap{display:flex;align-items:center;gap:10px}
+  .card-icon{
+    width:38px;height:38px;border-radius:9px;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:800;
+    flex-shrink:0;letter-spacing:.02em;
+  }
+  .card-sym{
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:26px;font-weight:800;letter-spacing:.01em;line-height:1;
+    color:var(--text);
+  }
+  .card-name{font-size:10px;color:var(--muted);margin-top:1px;letter-spacing:.02em}
+
+  /* Live dot */
+  .card-live{
+    display:flex;align-items:center;gap:5px;
+    font-family:'IBM Plex Mono',monospace;font-size:9px;
+    color:var(--green);letter-spacing:.06em;font-weight:600;
+    background:var(--green-dim);
+    border:1px solid rgba(0,201,107,.2);
+    padding:3px 8px;border-radius:20px;
+    flex-shrink:0;margin-top:4px;
+  }
+  .card-live-dot{
+    width:5px;height:5px;border-radius:50%;
+    background:var(--green-bright);
+    box-shadow:0 0 6px var(--green-bright);
+    animation:blink 1.4s infinite;
+  }
+
+  /* Price row */
+  .card-price-row{
+    display:flex;align-items:baseline;gap:8px;margin-bottom:16px;
+  }
+  .card-price{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:19px;font-weight:700;color:var(--text);
+  }
+  .card-chg{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;font-weight:600;
+    padding:2px 7px;border-radius:5px;
+  }
+  .card-chg.up{color:var(--green);background:var(--green-dim)}
+  .card-chg.dn{color:var(--red);background:var(--red-dim)}
+
+  /* ── PROBABILITY BAR ── */
+  .prob-section{margin-bottom:16px}
+  .prob-bar-wrap{
+    display:flex;height:8px;border-radius:99px;overflow:hidden;
+    margin-bottom:10px;gap:2px;
+  }
+  .prob-bar-up{
+    background:linear-gradient(90deg,var(--green),var(--green-bright));
+    border-radius:99px 0 0 99px;
+    transition:width .6s cubic-bezier(.4,0,.2,1);
+  }
+  .prob-bar-dn{
+    background:linear-gradient(90deg,var(--red-bright),var(--red));
+    border-radius:0 99px 99px 0;
+    flex:1;
+    transition:width .6s cubic-bezier(.4,0,.2,1);
+  }
+  .prob-labels{display:flex;justify-content:space-between;align-items:center}
+  .prob-up,.prob-dn{display:flex;align-items:baseline;gap:4px}
+  .prob-pct{
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:28px;font-weight:800;letter-spacing:.01em;line-height:1;
+  }
+  .prob-pct.up{color:var(--green)}
+  .prob-pct.dn{color:var(--red)}
+  .prob-tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:9px;font-weight:700;letter-spacing:.08em;
+    opacity:.7;
+  }
+  .prob-tag.up{color:var(--green)}
+  .prob-tag.dn{color:var(--red)}
+
+  /* Pool */
+  .card-pool{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px;color:var(--muted);letter-spacing:.04em;
+    text-align:center;margin-bottom:14px;
+    display:flex;align-items:center;justify-content:center;gap:5px;
+  }
+  .card-pool-val{color:var(--text);font-weight:600}
+
+  /* ── BET BUTTONS ── */
+  .card-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto}
+
+  .btn-up,.btn-dn{
+    padding:11px 8px;border-radius:10px;border:none;
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:15px;font-weight:800;cursor:pointer;
+    letter-spacing:.06em;text-transform:uppercase;
+    transition:transform .18s ease, box-shadow .18s ease, background .18s ease;
+    position:relative;overflow:hidden;
+  }
+  .btn-up::after,.btn-dn::after{
+    content:'';position:absolute;inset:0;
+    background:linear-gradient(135deg,rgba(255,255,255,0.12),transparent);
+    border-radius:inherit;pointer-events:none;
+  }
+  .btn-up{
+    background:var(--green);color:#fff;
+    border:1px solid rgba(0,201,107,.3);
+    box-shadow:0 2px 8px rgba(26,122,74,.2);
+  }
+  .btn-up:hover{
+    background:var(--green-bright);transform:translateY(-2px) scale(1.02);
+    box-shadow:0 6px 20px var(--green-glow);
+    border-color:var(--green-bright);
+  }
+  .btn-up:active{transform:translateY(0) scale(.98)}
+  .btn-dn{
+    background:var(--red);color:#fff;
+    border:1px solid rgba(255,60,90,.3);
+    box-shadow:0 2px 8px rgba(192,57,43,.2);
+  }
+  .btn-dn:hover{
+    background:var(--red-bright);transform:translateY(-2px) scale(1.02);
+    box-shadow:0 6px 20px var(--red-glow);
+    border-color:var(--red-bright);
+  }
+  .btn-dn:active{transform:translateY(0) scale(.98)}
+
+  /* ── HOW IT WORKS ── */
+  .section-divider{
+    height:1px;background:var(--border);margin:0 32px 40px;max-width:1216px;
+    margin-left:auto;margin-right:auto;
+  }
+  .how-grid{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:16px;
+  }
+  .how-card{
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:14px;padding:28px 24px;
+    position:relative;overflow:hidden;
+    transition:border-color .2s,transform .2s;
+  }
+  .how-card:hover{border-color:var(--border2);transform:translateY(-3px)}
+  .how-num{
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:40px;font-weight:900;
+    color:var(--border2);margin-bottom:14px;letter-spacing:.02em;
+  }
+  .how-icon{position:absolute;top:20px;right:20px;font-size:26px;opacity:.16}
+  .how-title{font-weight:600;font-size:14px;margin-bottom:6px;color:var(--text)}
+  .how-desc{color:var(--muted);font-size:12px;line-height:1.65}
+
+  /* ── MODAL ── */
+  .modal-overlay{
+    display:none;position:fixed;inset:0;z-index:1000;
+    background:rgba(20,18,15,0.75);backdrop-filter:blur(8px);
+    align-items:center;justify-content:center;
+  }
+  .modal-overlay.open{display:flex}
+  .modal{
+    background:var(--surface);border:1px solid var(--border2);
+    border-radius:20px;width:440px;max-width:95vw;
+    padding:32px;position:relative;
+    animation:modalIn .22s ease;
+  }
+  @keyframes modalIn{from{opacity:0;transform:scale(.94) translateY(12px)}to{opacity:1;transform:none}}
+  .modal-close{
+    position:absolute;top:16px;right:16px;
+    background:none;border:none;color:var(--muted);
+    font-size:18px;cursor:pointer;padding:4px 8px;border-radius:6px;
+    transition:color .15s;line-height:1;
+  }
+  .modal-close:hover{color:var(--text)}
+  .modal-stock{display:flex;align-items:center;gap:14px;margin-bottom:24px}
+  .modal-stock-icon{
+    width:48px;height:48px;border-radius:12px;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:800;
+  }
+  .modal-stock-sym{
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:30px;font-weight:900;line-height:1;letter-spacing:.02em;
+  }
+  .modal-stock-price{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;color:var(--muted);margin-top:3px;
+  }
+  .modal-timer{
+    background:var(--surface2);border:1px solid var(--border);
+    border-radius:10px;padding:12px 16px;
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:20px;
+  }
+  .modal-timer-label{font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;font-family:'IBM Plex Mono',monospace}
+  .modal-timer-val{
+    font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:var(--amber);
+  }
+  .modal-pool{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+  .pool-card{
+    padding:14px;border-radius:10px;border:1px solid;text-align:center;
+  }
+  .pool-card.up{background:var(--green-dim);border-color:rgba(0,201,107,.2)}
+  .pool-card.dn{background:var(--red-dim);border-color:rgba(255,60,90,.2)}
+  .pool-amt{
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:22px;font-weight:800;margin-bottom:2px;
+  }
+  .pool-card.up .pool-amt{color:var(--green)}
+  .pool-card.dn .pool-amt{color:var(--red)}
+  .pool-label{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+  .modal-input-label{font-size:11px;color:var(--muted);margin-bottom:6px;letter-spacing:.04em;font-family:'IBM Plex Mono',monospace}
+  .modal-input{
+    width:100%;padding:12px 16px;
+    background:var(--surface2);border:1px solid var(--border2);
+    border-radius:10px;font-family:'IBM Plex Mono',monospace;
+    font-size:16px;color:var(--text);outline:none;
+    transition:border-color .2s;margin-bottom:16px;
+  }
+  .modal-input:focus{border-color:var(--green-bright);box-shadow:0 0 0 3px rgba(0,201,107,.12)}
+  .modal-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .modal-btn-up,.modal-btn-dn{
+    padding:14px;border-radius:10px;border:none;
+    font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;
+    cursor:pointer;letter-spacing:.06em;text-transform:uppercase;
+    transition:transform .18s,box-shadow .18s;
+  }
+  .modal-btn-up{background:var(--green);color:#fff}
+  .modal-btn-up:hover{background:var(--green-bright);transform:translateY(-2px);box-shadow:0 8px 24px var(--green-glow)}
+  .modal-btn-dn{background:var(--red);color:#fff}
+  .modal-btn-dn:hover{background:var(--red-bright);transform:translateY(-2px);box-shadow:0 8px 24px var(--red-glow)}
+
+  /* ── PAGE HEADER ── */
+  .page-header{
+    background:var(--surface);border-bottom:1px solid var(--border);
+    padding:40px 32px;text-align:center;
+  }
+  .page-header-inner{max-width:600px;margin:0 auto}
+  .page-icon{font-size:40px;margin-bottom:14px}
+  .page-header h2{
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:38px;font-weight:900;letter-spacing:.02em;
+    text-transform:uppercase;margin-bottom:8px;
+  }
+  .page-header p{color:var(--muted);font-size:14px}
+
+  /* ── LEADERBOARD TABLE ── */
+  .table-wrap{
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:14px;overflow:hidden;
+  }
+  table{width:100%;border-collapse:collapse}
+  thead tr{background:var(--surface2);border-bottom:1px solid var(--border)}
+  thead th{
+    padding:12px 20px;text-align:left;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px;font-weight:600;
+    color:var(--muted);letter-spacing:.1em;text-transform:uppercase;
+  }
+  tbody tr{border-bottom:1px solid var(--border);transition:background .15s;cursor:pointer}
+  tbody tr:last-child{border-bottom:none}
+  tbody tr:hover{background:var(--surface2)}
+  tbody td{padding:16px 20px;font-size:13px}
+
+  /* ── PORTFOLIO ── */
+  .portfolio-full{
+    min-height:calc(100vh - 60px);
+    display:flex;align-items:center;justify-content:center;
+    position:relative;overflow:hidden;
+    background:var(--bg);
+    padding:40px 24px;
+  }
+  .pf-blob{position:absolute;border-radius:50%;filter:blur(80px);opacity:.18;pointer-events:none}
+  .pf-blob1{width:400px;height:400px;background:#1a7a4a;top:-100px;left:-100px}
+  .pf-blob2{width:300px;height:300px;background:#c0392b;bottom:-60px;right:-60px}
+  .pf-blob3{width:200px;height:200px;background:#b8860b;top:50%;left:60%}
+  .pf-blob4{width:250px;height:250px;background:#2c4a6e;bottom:20%;left:20%}
+  .pf-diamond{position:absolute;border:1px solid var(--border2);transform:rotate(45deg);opacity:.2}
+  .pf-diamond1{width:120px;height:120px;top:80px;right:200px}
+  .pf-diamond2{width:60px;height:60px;bottom:120px;left:160px}
+  .portfolio-center{
+    position:relative;z-index:2;
+    display:flex;flex-direction:column;align-items:center;
+    text-align:center;max-width:440px;width:100%;
+  }
+  .pf-icon-wrap{
+    width:72px;height:72px;border-radius:20px;
+    background:var(--surface2);border:1px solid var(--border2);
+    display:flex;align-items:center;justify-content:center;
+    margin-bottom:20px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.08);
+  }
+  .pf-title{
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:40px;font-weight:900;letter-spacing:.03em;
+    text-transform:uppercase;margin-bottom:8px;
+  }
+  .pf-sub{color:var(--muted);font-size:14px;line-height:1.6;margin-bottom:0}
+  .ca-box{
+    margin-top:32px;display:flex;align-items:center;gap:10px;
+    background:var(--surface2);border:1px solid var(--border2);
+    border-radius:10px;padding:10px 18px;
+  }
+  .ca-label{
+    font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;
+    color:var(--muted);letter-spacing:.1em;text-transform:uppercase;
+  }
+  .ca-addr{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;
+    color:var(--dim);
+  }
+
+  /* ── TOAST ── */
+  .toast{
+    position:fixed;bottom:28px;right:28px;z-index:2000;
+    background:var(--surface2);
+    border:1px solid var(--border2);
+    border-radius:12px;padding:14px 20px;
+    font-family:'IBM Plex Mono',monospace;font-size:13px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.14);
+    opacity:0;transform:translateY(12px);
+    transition:opacity .25s,transform .25s;
+    pointer-events:none;
+    max-width:320px;
+  }
+  .toast.show{opacity:1;transform:none;pointer-events:auto}
+
+  /* ── FOOTER ── */
+  footer{
+    background:var(--surface);border-top:1px solid var(--border);
+    display:grid;grid-template-columns:2fr 1fr 1fr;
+    gap:40px;padding:48px 40px;max-width:1280px;margin:0 auto;
+  }
+  .footer-brand .logo{
+    font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;
+    margin-bottom:10px;display:flex;align-items:center;gap:6px;
+  }
+  .footer-brand p{color:var(--muted);font-size:13px;line-height:1.6}
+  .footer-col h4{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px;font-family:'IBM Plex Mono',monospace}
+  .footer-col a{display:block;color:var(--muted);text-decoration:none;font-size:13px;margin-bottom:8px;transition:color .15s}
+  .footer-col a:hover{color:var(--text)}
+  .footer-bottom{
+    background:var(--surface2);border-top:1px solid var(--border);
+    display:flex;justify-content:space-between;align-items:center;
+    padding:14px 40px;
+    font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);
+  }
+  .footer-built a{color:var(--muted);text-decoration:none}
+  .footer-built a:hover{color:var(--text)}
+
+  @media(max-width:700px){
+    nav{padding:0 16px}
+    .section{padding:28px 16px}
+    .stats-bar{grid-template-columns:repeat(2,1fr)}
+    .stats-bar .stat-item:nth-child(2){border-right:none}
+    footer{grid-template-columns:1fr;gap:28px;padding:32px 24px}
+    .footer-bottom{padding:12px 24px;flex-direction:column;gap:6px;text-align:center}
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="#">
+    <span class="dot"></span>STOCKDUEL
+  </a>
+  <div class="nav-links">
+    <a href="#" class="active" id="nav-markets" onclick="showPage('markets');return false;">Markets</a>
+    <a href="#" id="nav-leaderboard" onclick="showPage('leaderboard');return false;">Leaderboard</a>
+    <a href="#" id="nav-portfolio" onclick="showPage('portfolio');return false;">Portfolio</a>
+  </div>
+  <button class="btn-connect" id="btn-wallet" onclick="connectWallet()">Connect Wallet</button>
+</nav>
+
+<!-- ══════════════ PAGE: MARKETS ══════════════ -->
+<div id="page-markets" class="page">
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">
+    <span class="live-dot"></span>LIVE · NYSE &amp; NASDAQ · 5-MIN ROUNDS
+  </div>
+  <h1>STOCK<em>DUEL</em><br/>Beat the Market</h1>
+  <p class="hero-sub">5-minute prediction duels on real tech stocks. Pick UP or DOWN, beat the crowd, collect your winnings.</p>
+</section>
+
+<!-- TICKER TAPE -->
+<div class="ticker-wrap">
+  <div class="ticker" id="ticker"></div>
+</div>
+
+<!-- MAIN -->
+<main>
+  <div class="section">
+
+    <!-- STATS -->
+    <div class="stats-bar">
+      <div class="stat-item">
+        <div class="stat-val green" id="stat-vol">$2.41M</div>
+        <div class="stat-label">24h Volume</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val" id="stat-rounds">1,847</div>
+        <div class="stat-label">Rounds Settled</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val" id="stat-players">12,304</div>
+        <div class="stat-label">Active Players</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val green">5 MIN</div>
+        <div class="stat-label">Round Duration</div>
+      </div>
+    </div>
+
+    <!-- MARKET CARDS -->
+    <div class="section-header">
+      <div class="section-title">Live Markets</div>
+      <div class="market-count" id="market-count">Loading…</div>
+    </div>
+
+    <div class="market-grid" id="market-grid">
+      <!-- Skeleton loaders -->
+      <div class="card-skeleton" style="height:260px"><div class="skel-line" style="height:14px;width:60%;margin-bottom:14px"></div><div class="skel-line" style="height:10px;width:40%"></div><div class="skel-line" style="height:8px;width:100%;margin-top:24px"></div><div class="skel-line" style="height:32px;width:80%;margin-top:8px"></div></div>
+      <div class="card-skeleton" style="height:260px"><div class="skel-line" style="height:14px;width:55%;margin-bottom:14px"></div><div class="skel-line" style="height:10px;width:35%"></div><div class="skel-line" style="height:8px;width:100%;margin-top:24px"></div><div class="skel-line" style="height:32px;width:75%;margin-top:8px"></div></div>
+      <div class="card-skeleton" style="height:260px"><div class="skel-line" style="height:14px;width:65%;margin-bottom:14px"></div><div class="skel-line" style="height:10px;width:45%"></div><div class="skel-line" style="height:8px;width:100%;margin-top:24px"></div><div class="skel-line" style="height:32px;width:70%;margin-top:8px"></div></div>
+      <div class="card-skeleton" style="height:260px"><div class="skel-line" style="height:14px;width:50%;margin-bottom:14px"></div><div class="skel-line" style="height:10px;width:38%"></div><div class="skel-line" style="height:8px;width:100%;margin-top:24px"></div><div class="skel-line" style="height:32px;width:68%;margin-top:8px"></div></div>
+    </div>
+
+    <!-- HOW IT WORKS -->
+    <div class="section-title" style="margin-bottom:20px">How it works</div>
+    <div class="how-grid" style="margin-bottom:0">
+      <div class="how-card">
+        <div class="how-num">01</div>
+        <div class="how-icon">🏢</div>
+        <div class="how-title">Pick a Stock</div>
+        <div class="how-desc">Browse top tech stocks — NVDA, AAPL, TSLA, MSFT and more. Real prices, real stakes.</div>
+      </div>
+      <div class="how-card">
+        <div class="how-num">02</div>
+        <div class="how-icon">📈</div>
+        <div class="how-title">Bet UP or DOWN</div>
+        <div class="how-desc">Predict price direction in live 5-minute dueling windows. Stake your position.</div>
+      </div>
+      <div class="how-card">
+        <div class="how-num">03</div>
+        <div class="how-icon">⚙️</div>
+        <div class="how-title">Anyone Settles</div>
+        <div class="how-desc">Settle rounds on-chain and earn 0.1% reward. Decentralized and permissionless.</div>
+      </div>
+      <div class="how-card">
+        <div class="how-num">04</div>
+        <div class="how-icon">💰</div>
+        <div class="how-title">Collect Winnings</div>
+        <div class="how-desc">Winners split the pool proportionally. Market creators earn 0.5% forever.</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+</div><!-- end page-markets -->
+
+<!-- ══════════════ PAGE: LEADERBOARD ══════════════ -->
+<div id="page-leaderboard" class="page" style="display:none">
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="page-icon">🏆</div>
+    <h2>Leaderboard</h2>
+    <p>Top players ranked by total winnings. Be the first to claim your spot.</p>
+  </div>
+</div>
+<div class="section">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Player</th>
+          <th>Bets</th>
+          <th>Win Rate</th>
+          <th>Total Won</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td colspan="5" style="text-align:center;padding:80px 20px">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:16px">
+              <div style="font-size:48px;opacity:.25">🏆</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);letter-spacing:.1em">NO PLAYERS YET</div>
+              <div style="font-size:12px;color:var(--dim);max-width:280px;line-height:1.65">Be the first to place a bet and claim the top spot.</div>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════ PAGE: PORTFOLIO ══════════════ -->
+<div id="page-portfolio" class="page" style="display:none">
+<div class="portfolio-full">
+  <div class="pf-blob pf-blob1"></div>
+  <div class="pf-blob pf-blob2"></div>
+  <div class="pf-blob pf-blob3"></div>
+  <div class="pf-blob pf-blob4"></div>
+  <div class="pf-diamond pf-diamond1"></div>
+  <div class="pf-diamond pf-diamond2"></div>
+  <div class="portfolio-center">
+    <div class="pf-icon-wrap">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)">
+        <rect x="2" y="5" width="20" height="14" rx="3"/>
+        <path d="M2 10h20"/><path d="M7 15h.01M11 15h2"/>
+      </svg>
+    </div>
+    <h2 class="pf-title">Portfolio</h2>
+    <p class="pf-sub" id="pf-sub-text">Connect your wallet to view your betting history</p>
+
+    <div id="pf-connect-btn-wrap" style="margin-top:24px">
+      <button class="btn-connect" style="padding:12px 36px;font-size:13px" onclick="connectWallet()">🔗 Connect Wallet</button>
+    </div>
+
+    <div id="pf-connected" style="display:none;margin-top:24px;width:100%;max-width:380px">
+      <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div>
+          <div style="font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;font-family:'IBM Plex Mono',monospace">Connected Wallet</div>
+          <div id="pf-wallet-addr" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--green)"></div>
+        </div>
+        <div style="width:10px;height:10px;border-radius:50%;background:var(--green-bright);box-shadow:0 0 8px var(--green-bright)"></div>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:48px 20px;text-align:center">
+        <div style="font-size:36px;opacity:.2;margin-bottom:12px">📊</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.08em">NO BET HISTORY YET</div>
+        <div style="font-size:12px;color:var(--dim);margin-top:8px">Place your first bet to see your portfolio here.</div>
+      </div>
+      <button onclick="disconnectWallet()" style="margin-top:16px;background:none;border:1px solid var(--border2);color:var(--muted);padding:8px 20px;border-radius:8px;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;letter-spacing:.04em;transition:all .2s" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--muted)'">Disconnect</button>
+    </div>
+
+    <div class="ca-box">
+      <span class="ca-label">CA</span>
+      <span class="ca-addr">Coming Soon</span>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-brand">
+    <div class="logo"><span style="color:var(--green-bright)">●</span> STOCKDUEL</div>
+    <p>Prediction markets for tech stocks. Pick a side, place your bet, and win.</p>
+  </div>
+  <div class="footer-col">
+    <h4>Navigate</h4>
+    <a href="#" onclick="showPage('markets');return false;">Markets</a>
+    <a href="#" onclick="showPage('leaderboard');return false;">Leaderboard</a>
+    <a href="#" onclick="showPage('portfolio');return false;">Portfolio</a>
+  </div>
+  <div class="footer-col">
+    <h4>Social</h4>
+    <a href="#">GitHub</a>
+    <a href="#">Telegram</a>
+    <a href="https://x.com/DuelStocks" target="_blank">Twitter</a>
+  </div>
+</footer>
+<div class="footer-bottom">
+  <span>STOCKDUEL · Prediction markets for NYSE &amp; NASDAQ</span>
+  <span class="footer-built">Built on <a href="https://base.org" target="_blank">Base</a></span>
+</div>
+
+<!-- BET MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-stock">
+      <div class="modal-stock-icon" id="modal-icon"></div>
+      <div>
+        <div class="modal-stock-sym" id="modal-name"></div>
+        <div class="modal-stock-price" id="modal-price"></div>
+      </div>
+    </div>
+    <div class="modal-timer">
+      <span class="modal-timer-label">Round ends in</span>
+      <span class="modal-timer-val" id="modal-countdown">04:47</span>
+    </div>
+    <div class="modal-pool">
+      <div class="pool-card up">
+        <div class="pool-amt" id="modal-up-pool">$14,820</div>
+        <div class="pool-label">▲ UP Pool</div>
+      </div>
+      <div class="pool-card dn">
+        <div class="pool-amt" id="modal-dn-pool">$11,340</div>
+        <div class="pool-label">▼ DOWN Pool</div>
+      </div>
+    </div>
+    <div class="modal-input-label">Bet Amount (USD)</div>
+    <input class="modal-input" type="number" id="bet-amount" placeholder="0.00" min="1"/>
+    <div class="modal-btns">
+      <button class="modal-btn-up" onclick="placeBet('UP')">▲ BET UP</button>
+      <button class="modal-btn-dn" onclick="placeBet('DOWN')">▼ BET DOWN</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"><span id="toast-msg"></span></div>
+
+<script>
+// ── DATA ─────────────────────────────────────────────────────────
+const STOCKS = [
+  {sym:'NVDA',name:'NVIDIA Corporation',price:875.20,chg:+3.41,color:'#76b900',bg:'rgba(118,185,0,0.15)',upPct:62},
+  {sym:'AAPL',name:'Apple Inc.',price:196.45,chg:-0.82,color:'#999',bg:'rgba(153,153,153,0.12)',upPct:44},
+  {sym:'TSLA',name:'Tesla, Inc.',price:243.10,chg:+5.72,color:'#e31937',bg:'rgba(227,25,55,0.12)',upPct:71},
+  {sym:'MSFT',name:'Microsoft Corp.',price:415.70,chg:+1.14,color:'#00a4ef',bg:'rgba(0,164,239,0.12)',upPct:55},
+  {sym:'GOOGL',name:'Alphabet Inc.',price:178.32,chg:-0.39,color:'#4285f4',bg:'rgba(66,133,244,0.12)',upPct:39},
+  {sym:'META',name:'Meta Platforms',price:522.80,chg:+2.88,color:'#0082fb',bg:'rgba(0,130,251,0.12)',upPct:67},
+  {sym:'AMZN',name:'Amazon.com Inc.',price:195.60,chg:+0.61,color:'#ff9900',bg:'rgba(255,153,0,0.12)',upPct:51},
+  {sym:'AMD',name:'Advanced Micro Devices',price:158.44,chg:-2.15,color:'#ed1c24',bg:'rgba(237,28,36,0.12)',upPct:33},
+];
+
+let livePrices = STOCKS.map(s=>({...s,livePrice:s.price,upPct:s.upPct}));
+
+// ── HELPERS ──────────────────────────────────────────────────────
+function fmtPrice(p){return '$'+p.toFixed(2)}
+function fmtChg(c){return (c>=0?'+':'')+c.toFixed(2)+'%'}
+function fmtPool(n){return '$'+(n).toLocaleString()}
+
+function randPool(base){return base + Math.floor(Math.random()*12000)}
+
+// ── RENDER CARD GRID ─────────────────────────────────────────────
+function renderCards(){
+  const grid = document.getElementById('market-grid');
+  const count = document.getElementById('market-count');
+  if(count) count.textContent = livePrices.length + ' Markets Live';
+
+  grid.innerHTML = livePrices.map((s,i)=>{
+    const upPct = Math.round(s.upPct);
+    const dnPct = 100 - upPct;
+    const pool = fmtPool(8000 + (i*3723) % 18000 + Math.floor(Math.random()*2000));
+    const isUp = s.chg >= 0;
+    const pulse = Math.random() > 0.6 ? ' pulse-active' : '';
+
+    return `
+    <div class="market-card${pulse}" onclick="openModal('${s.sym}')">
+
+      <!-- Top Row -->
+      <div class="card-top">
+        <div class="card-sym-wrap">
+          <div class="card-icon" style="background:${s.bg};color:${s.color}">${s.sym.slice(0,3)}</div>
+          <div>
+            <div class="card-sym">${s.sym}</div>
+            <div class="card-name">${s.name}</div>
+          </div>
+        </div>
+        <div class="card-live"><span class="card-live-dot"></span>LIVE</div>
+      </div>
+
+      <!-- Price Row -->
+      <div class="card-price-row">
+        <span class="card-price">${fmtPrice(s.livePrice)}</span>
+        <span class="card-chg ${isUp?'up':'dn'}">${fmtChg(s.chg)}</span>
+      </div>
+
+      <!-- Probability -->
+      <div class="prob-section">
+        <div class="prob-bar-wrap">
+          <div class="prob-bar-up" style="width:${upPct}%"></div>
+          <div class="prob-bar-dn"></div>
+        </div>
+        <div class="prob-labels">
+          <div class="prob-up">
+            <span class="prob-pct up">${upPct}%</span>
+            <span class="prob-tag up">UP</span>
+          </div>
+          <div class="prob-dn">
+            <span class="prob-tag dn">DOWN</span>
+            <span class="prob-pct dn">${dnPct}%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pool -->
+      <div class="card-pool">
+        <span>Pool</span>
+        <span class="card-pool-val">${pool}</span>
+      </div>
+
+      <!-- Buttons -->
+      <div class="card-btns" onclick="event.stopPropagation()">
+        <button class="btn-up" onclick="openModal('${s.sym}','UP')">▲ BET UP</button>
+        <button class="btn-dn" onclick="openModal('${s.sym}','DOWN')">▼ BET DOWN</button>
+      </div>
+
+    </div>`;
+  }).join('');
+}
+
+// ── TICKER ───────────────────────────────────────────────────────
+function buildTicker(){
+  const wrap = document.getElementById('ticker');
+  const items = [...STOCKS,...STOCKS].map(s=>`
+    <div class="tick-item">
+      <span class="tick-sym">${s.sym}</span>
+      <span class="tick-price">${fmtPrice(s.price)}</span>
+      <span class="tick-chg ${s.chg>=0?'up':'dn'}">${fmtChg(s.chg)}</span>
+    </div>
+  `).join('');
+  wrap.innerHTML = items+items;
+}
+
+// ── LIVE PRICE SIMULATION ─────────────────────────────────────────
+setInterval(()=>{
+  livePrices = livePrices.map(s=>{
+    const delta = (Math.random()-.5)*0.9;
+    const newPct = Math.min(85, Math.max(15, s.upPct + (Math.random()-.5)*3));
+    return {...s, livePrice:Math.max(1,s.livePrice+delta), upPct:newPct};
+  });
+  renderCards();
+}, 3500);
+
+// ── MODAL ─────────────────────────────────────────────────────────
+let countdownInterval;
+let countdownSecs = 287;
+
+function startCountdown(){
+  clearInterval(countdownInterval);
+  countdownInterval = setInterval(()=>{
+    countdownSecs--;
+    if(countdownSecs<0) countdownSecs=300;
+    const m = Math.floor(countdownSecs/60).toString().padStart(2,'0');
+    const sec = (countdownSecs%60).toString().padStart(2,'0');
+    const el = document.getElementById('modal-countdown');
+    if(el) el.textContent=`${m}:${sec}`;
+  },1000);
+}
+
+function openModal(sym, direction){
+  const s = livePrices.find(x=>x.sym===sym);
+  if(!s) return;
+  document.getElementById('modal-icon').style.background = s.bg;
+  document.getElementById('modal-icon').style.color = s.color;
+  document.getElementById('modal-icon').textContent = sym.slice(0,3);
+  document.getElementById('modal-name').textContent = s.sym;
+  document.getElementById('modal-price').textContent = fmtPrice(s.livePrice) + ' · ' + fmtChg(s.chg);
+  document.getElementById('modal-up-pool').textContent = '$'+(8000+Math.floor(Math.random()*20000)).toLocaleString();
+  document.getElementById('modal-dn-pool').textContent = '$'+(5000+Math.floor(Math.random()*18000)).toLocaleString();
+  document.getElementById('bet-amount').value='';
+  document.getElementById('modal').classList.add('open');
+  startCountdown();
+}
+
+function closeModal(){
+  document.getElementById('modal').classList.remove('open');
+  clearInterval(countdownInterval);
+}
+
+document.getElementById('modal').addEventListener('click',function(e){
+  if(e.target===this) closeModal();
+});
+
+function placeBet(dir){
+  const amt = document.getElementById('bet-amount').value;
+  if(!amt||amt<=0){showToast('⚠️ Enter a valid amount','#ffb800');return}
+  closeModal();
+  const icon = dir==='UP'?'📈':'📉';
+  const color = dir==='UP'?'var(--green-bright)':'var(--red-bright)';
+  showToast(`${icon} Bet ${dir} placed for $${parseFloat(amt).toFixed(2)}!`, color);
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────
+function showToast(msg, color='var(--green-bright)'){
+  const t = document.getElementById('toast');
+  const m = document.getElementById('toast-msg');
+  m.textContent=msg;
+  t.style.borderColor=color;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3500);
+}
+
+// ── STAT COUNTER ──────────────────────────────────────────────────
+function animateNum(el, target){
+  let cur=0;const step=target/60;
+  const iv=setInterval(()=>{
+    cur=Math.min(cur+step,target);
+    el.textContent=Math.floor(cur).toLocaleString();
+    if(cur>=target)clearInterval(iv);
+  },16);
+}
+
+// ── WALLET ────────────────────────────────────────────────────────
+let walletAddress = null;
+function shortAddr(addr){return addr.slice(0,6)+'...'+addr.slice(-4)}
+function updateWalletUI(){
+  const btn = document.getElementById('btn-wallet');
+  const pfConnect = document.getElementById('pf-connect-btn-wrap');
+  const pfConnected = document.getElementById('pf-connected');
+  const pfSub = document.getElementById('pf-sub-text');
+  if(walletAddress){
+    btn.textContent = shortAddr(walletAddress);
+    btn.style.background='var(--green-dim)';btn.style.color='var(--green)';
+    btn.style.border='1px solid rgba(0,201,107,.3)';
+    btn.style.boxShadow='0 0 16px rgba(0,201,107,.2)';
+    btn.onclick=disconnectWallet;
+    if(pfConnect)pfConnect.style.display='none';
+    if(pfConnected)pfConnected.style.display='';
+    if(pfSub)pfSub.textContent='Your on-chain betting history';
+    document.getElementById('pf-wallet-addr').textContent=shortAddr(walletAddress);
+  } else {
+    btn.textContent='Connect Wallet';
+    btn.style.background='#1a1a1a';btn.style.color='#ede8df';
+    btn.style.border='none';btn.style.boxShadow='0 0 16px rgba(26,26,26,0.2)';
+    btn.onclick=connectWallet;
+    if(pfConnect)pfConnect.style.display='';
+    if(pfConnected)pfConnected.style.display='none';
+    if(pfSub)pfSub.textContent='Connect your wallet to view your betting history';
+  }
+}
+
+const BASE_CHAIN_ID='0x2105';
+async function switchToBase(){
+  try{
+    await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:BASE_CHAIN_ID}]});
+    return true;
+  }catch(err){
+    if(err.code===4902){
+      try{
+        await window.ethereum.request({method:'wallet_addEthereumChain',params:[{chainId:BASE_CHAIN_ID,chainName:'Base',nativeCurrency:{name:'Ether',symbol:'ETH',decimals:18},rpcUrls:['https://mainnet.base.org'],blockExplorerUrls:['https://basescan.org']}]});
+        return true;
+      }catch(e){showToast('⚠️ Failed to add Base network','#ffb800');return false}
+    }
+    return false;
+  }
+}
+async function connectWallet(){
+  if(typeof window.ethereum==='undefined'){
+    showToast('⚠️ No wallet detected. Install MetaMask!','#ffb800');
+    setTimeout(()=>window.open('https://metamask.io/download/','_blank'),1200);return;
+  }
+  try{
+    const accounts=await window.ethereum.request({method:'eth_requestAccounts'});
+    if(accounts.length>0){
+      const onBase=await switchToBase();
+      if(!onBase){showToast('⚠️ Please switch to Base network','#ffb800');return}
+      walletAddress=accounts[0];updateWalletUI();showToast('🔵 Connected on Base!','#00c96b');
+    }
+  }catch(err){
+    if(err.code===4001)showToast('❌ Connection rejected','#ff3c5a');
+    else showToast('⚠️ Connection failed','#ffb800');
+  }
+}
+function disconnectWallet(){walletAddress=null;updateWalletUI();showToast('👋 Wallet disconnected','#6b7a99')}
+if(typeof window.ethereum!=='undefined'){
+  window.ethereum.on('accountsChanged',accs=>{walletAddress=accs.length?accs[0]:null;updateWalletUI()});
+  window.ethereum.on('chainChanged',id=>{if(id!==BASE_CHAIN_ID){showToast('⚠️ Please switch back to Base network','#ffb800');walletAddress=null;updateWalletUI()}});
+}
+
+// ── PAGE NAV ──────────────────────────────────────────────────────
+function showPage(page){
+  ['markets','leaderboard','portfolio'].forEach(p=>{
+    const el=document.getElementById('page-'+p);
+    if(el)el.style.display=p===page?'':'none';
+    const nav=document.getElementById('nav-'+p);
+    if(nav)nav.classList.toggle('active',p===page);
+  });
+  const footer=document.querySelector('footer');
+  const footerBottom=document.querySelector('.footer-bottom');
+  if(page==='markets'){footer.style.display='';footerBottom.style.display='';}
+  else{footer.style.display='none';footerBottom.style.display='none';}
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── INIT ──────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded',()=>{
+  buildTicker();
+  setTimeout(()=>{
+    renderCards();
+    animateNum(document.getElementById('stat-rounds'),1847);
+    animateNum(document.getElementById('stat-players'),12304);
+  },1000);
+  showPage('markets');
+});
+</script>
+</body>
+</html>
